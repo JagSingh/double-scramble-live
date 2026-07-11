@@ -42,7 +42,7 @@ Prerequisites on the host: Docker, and dump1090-mutability writing `/var/run/dum
 3. In `docker-compose.yml`, set the image to your GHCR path (or switch to `build: .`).
 4. `docker compose up -d`
 
-No antenna handy? `DEMO=1 docker compose up` fabricates plausible traffic. No stream key? The container writes a local HLS preview to `./output/preview.m3u8` — open it in VLC.
+Test without antenna. `DEMO=1 docker compose up` fabricates plausible traffic. No stream key? The container writes a local HLS preview to `./output/preview.m3u8` — open it in VLC.
 
 Useful knobs (env vars): `WIDTH`, `HEIGHT`, `FPS`, `VIDEO_BITRATE`, `TRANSITION_SECONDS`, `IDLE_SECONDS`, `DEDUPE_SECONDS`, `OUTPUT_URL` (any ffmpeg sink, e.g. a different RTMP endpoint).
 
