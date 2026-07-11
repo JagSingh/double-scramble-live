@@ -1,0 +1,40 @@
+# (c) 2026 jag.m.singh@gmail.com
+name: build-and-publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image (local, for smoke test)
+        run: docker build -t double-scramble:test .
+
+      - name: Smoke test (10 s render in demo mode, null sink)
+        run: docker run --rm -e SMOKE_TEST=1 -e DEMO=1 double-scramble:test
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set lowercase image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Push
+        run: |
+          docker tag double-scramble:test "$IMAGE:latest"
+          docker tag double-scramble:test "$IMAGE:${GITHUB_SHA::7}"
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:${GITHUB_SHA::7}"
