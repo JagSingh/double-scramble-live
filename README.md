@@ -1,3 +1,5 @@
+https://jagmsingh.com/Double-Scramble/Double-Scramble.html
+
 # Double Scramble, Live
 
 A 24/7 generative art livestream after Frank Stella's *Double Scramble* (Blanton Museum of Art), scored by Erik Satie's Gymnopédie No. 1 and conducted by the aircraft flying over your antenna.
