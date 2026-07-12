@@ -5,6 +5,7 @@ services:
     build: .                                           # build locally from Dockerfile
     restart: unless-stopped                            # 24/7
     environment:
+      PYTHONUNBUFFERED: "1"
       YOUTUBE_STREAM_KEY: ${YOUTUBE_STREAM_KEY:-}
       TZ: America/Chicago   # clock overlay shows container-local time
       # DEMO: "1"            # uncomment to run without an SDR
