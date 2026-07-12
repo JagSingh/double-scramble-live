@@ -33,6 +33,46 @@ dump1090 → /var/run/dump1090-mutability/aircraft.json  (host, read-only mount)
 
 Audio and video are generated frame-locked (44100 / 30 = 1470 samples per frame) and paced to the wall clock, so the note you hear is the transition you see. A supervisor loop restarts the pipeline if YouTube or ffmpeg drops, and Docker's `restart: unless-stopped` covers everything else.
 
+### Feeding two pipes without deadlocking
+
+"named pipes" in the diagram - ugh!! A Linux FIFO buffers ~64 KB; one raw 720p frame is
+2.7 MB, so every video write blocks until ffmpeg drains it — while
+ffmpeg, for its part, decides which input it wants next based on
+timestamp interleaving, and (since ffmpeg 7) deliberately *pauses* the
+stream that is ahead until the lagging one catches up. Feed it naively
+and both processes end up waiting on each other forever, healthy and
+silent at 0% CPU. Three mechanisms keep the pipeline deadlock-free:
+
+1. **Startup handshake.** ffmpeg opens and probes its inputs
+   sequentially, so the launcher follows a strict order: open the video
+   FIFO, push frame 0 (satisfies the probe), open the audio FIFO, push
+   one audio block. Deterministic, done once (`stream.py`).
+
+2. **One writer thread per pipe.** The render loop never writes to a
+   pipe directly; it enqueues, and a dedicated thread per pipe does the
+   blocking writes. Whichever stream ffmpeg wants next, that pipe's
+   writer is standing there with data — blocking one pipe can no longer
+   hold the other hostage (`main.py`).
+
+3. **Asymmetric queues.** Audio frames are 5.8 KB, video frames 2.7 MB,
+   so the audio queue is deep (256 frames ≈ 8.5 s, all of 1.5 MB) and
+   the video queue modest (8). This makes the producer-side deadlock
+   structurally impossible: the render loop can only ever block on
+   video, and by then every audio frame up to that point is already
+   queued — whichever stream ffmpeg demands is always available, under
+   ffmpeg 6's greedy input reads and ffmpeg 7's interleave backpressure
+   alike.
+
+Failure is handled by conceding it will happen: the queue `put`s carry
+5-second timeouts, so a truly dead ffmpeg becomes a detected stall; the
+RTMP output carries `-rw_timeout`, so a wedged YouTube socket kills
+ffmpeg instead of letting it hoard buffers; a supervisor loop restarts
+the pipeline in-process within seconds; and Docker's
+`restart: unless-stopped` covers everything the process can't recover
+from itself. The base image is pinned by digest, because ffmpeg's I/O
+scheduling has changed meaningfully between major versions and an
+upgrade should be a decision, not a side effect of a rebuild.
+
 ## Run it
 
 Prerequisites on the host: Docker, and dump1090-mutability writing `/var/run/dump1090-mutability/aircraft.json`.
