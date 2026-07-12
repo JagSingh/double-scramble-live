@@ -12,7 +12,7 @@ The melody and harmony are Satie's, in order; the *rhythm* is the sky's. Over a 
 
 The base hue advances by the golden-ratio conjugate (an irrational rotation of the color wheel, so the sequence never cycles), then each palette is jittered by a seed built from the aircraft's ICAO hex and the nanosecond clock. Scheme (analogous / split-complement / soft triad), saturation band, lightness ramp, and ramp direction are drawn fresh every time, tuned to the soft mid-saturation ranges of curated palettes. Panel A steps through its values in order; panel B scrambles the same family — Stella's double scramble.
 
-## Architecture
+## Design
 
 ```
 dump1090 → /var/run/dump1090-mutability/aircraft.json  (host, read-only mount)
