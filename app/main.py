@@ -46,6 +46,34 @@ def run_pipeline():
     first_audio = engine.render_frame()
     first_frame = renderer.render(0.0, idle_level=1.0).tobytes()
     proc, vpipe, apipe = stream.start_ffmpeg(first_frame, first_audio)
+
+    # Dedicated writer thread per pipe. A single thread alternating
+    # audio-write / video-write can deadlock: ffmpeg interleaves by
+    # timestamp and may refuse to drain more video until it gets audio,
+    # while we sit blocked pushing a 2.7 MB frame into a 64 KB pipe -
+    # both processes healthy, both waiting forever. With one thread per
+    # pipe, ffmpeg always finds whichever stream it wants next. Bounded
+    # queues preserve backpressure: if ffmpeg truly stalls, put() blocks
+    # and the timeout below turns it into a supervised restart.
+    video_q = queue.Queue(maxsize=4)
+    audio_q = queue.Queue(maxsize=8)
+    writer_dead = threading.Event()
+
+    def _writer(pipe, q, name):
+        try:
+            while True:
+                data = q.get()
+                if data is None:
+                    return
+                pipe.write(data)
+        except Exception as exc:
+            print(f"[stream] {name} writer died: {exc}", flush=True)
+            writer_dead.set()
+
+    for pipe, q, name in ((apipe, audio_q, "audio"), (vpipe, video_q, "video")):
+        threading.Thread(target=_writer, args=(pipe, q, name),
+                         daemon=True).start()
+
     events = queue.Queue()
     stop = threading.Event()
     threading.Thread(target=watcher_thread, args=(events, stop),
@@ -97,12 +125,17 @@ def run_pipeline():
                 else max(0.0, idle_level - frame_period / 1.5)
 
             # --- produce one frame of audio + video -----------------------
-            apipe.write(engine.render_frame())
+            if writer_dead.is_set():
+                raise BrokenPipeError("pipe writer died")
             frame = renderer.render(now, idle_level)
             overlay_treble.apply(frame, now)
             overlay_bass.apply(frame, now)
             clock.apply(frame)
-            vpipe.write(frame.tobytes())
+            try:
+                audio_q.put(engine.render_frame(), timeout=5)
+                video_q.put(frame.tobytes(), timeout=5)
+            except queue.Full:
+                raise BrokenPipeError("ffmpeg stopped draining its pipes")
 
             frame_no += 1
             if max_frames and frame_no >= max_frames:
@@ -118,6 +151,11 @@ def run_pipeline():
                 next_deadline = time.perf_counter() - t0
     finally:
         stop.set()
+        for q in (audio_q, video_q):
+            try:
+                q.put_nowait(None)   # stop writer threads
+            except queue.Full:
+                pass
         for p in (vpipe, apipe):
             try:
                 p.close()
