@@ -1,7 +1,8 @@
 # (c) 2026 jag.m.singh@gmail.com
 services:
   double-scramble:
-    image: ghcr.io/OWNER/double-scramble-live:latest   # or: build: .
+    # image: ghcr.io/OWNER/double-scramble-live:latest   # or: build: .
+    build: .                                           # build locally from Dockerfile
     restart: unless-stopped                            # 24/7
     environment:
       YOUTUBE_STREAM_KEY: ${YOUTUBE_STREAM_KEY:-}
