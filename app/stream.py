@@ -21,7 +21,10 @@ def _sink():
     if config.OUTPUT_URL:
         return ["-f", "flv", config.OUTPUT_URL]
     if config.YOUTUBE_STREAM_KEY:
-        return ["-f", "flv",
+        # rw_timeout (microseconds): if the RTMP socket stops accepting
+        # writes for 10 s, ffmpeg exits instead of hoarding buffers as a
+        # zombie - the writers die, and the supervisor reconnects fresh.
+        return ["-f", "flv", "-rw_timeout", "10000000",
                 f"rtmp://a.rtmp.youtube.com/live2/{config.YOUTUBE_STREAM_KEY}"]
     os.makedirs(config.OUTPUT_DIR, exist_ok=True)
     print(f"[stream] no YOUTUBE_STREAM_KEY - writing local HLS preview to "

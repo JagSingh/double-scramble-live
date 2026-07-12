@@ -55,9 +55,23 @@ def run_pipeline():
     # pipe, ffmpeg always finds whichever stream it wants next. Bounded
     # queues preserve backpressure: if ffmpeg truly stalls, put() blocks
     # and the timeout below turns it into a supervised restart.
-    video_q = queue.Queue(maxsize=4)
-    audio_q = queue.Queue(maxsize=8)
+    # Queue sizing is deliberately asymmetric, and it is what makes the
+    # cross-pipe deadlock structurally impossible on ANY ffmpeg version.
+    # ffmpeg 7's threaded scheduler enforces interleave backpressure: it
+    # pauses reading the stream that is AHEAD (audio) until the lagging
+    # stream (video) catches up. If the audio queue could fill first, the
+    # producer would block on audio while holding back the very video
+    # frame the scheduler is waiting for - observed as a deadlock under
+    # ffmpeg 7.1 (container) that ffmpeg 6.1's greedier input reading
+    # (host) happened to tolerate. So audio - at 5.8 KB/frame - gets a
+    # deep queue (~8.5 s, 1.5 MB) the producer essentially never blocks
+    # on; video - 2.7 MB/frame - stays modest. Blocked-on-video is safe:
+    # all audio up to that frame is already queued, so whichever stream
+    # ffmpeg wants next is always available.
+    video_q = queue.Queue(maxsize=8)
+    audio_q = queue.Queue(maxsize=256)
     writer_dead = threading.Event()
+    closing = threading.Event()
 
     def _writer(pipe, q, name):
         try:
@@ -67,7 +81,8 @@ def run_pipeline():
                     return
                 pipe.write(data)
         except Exception as exc:
-            print(f"[stream] {name} writer died: {exc}", flush=True)
+            if not closing.is_set():   # expected during shutdown; stay quiet
+                print(f"[stream] {name} writer died: {exc}", flush=True)
             writer_dead.set()
 
     for pipe, q, name in ((apipe, audio_q, "audio"), (vpipe, video_q, "video")):
@@ -151,6 +166,7 @@ def run_pipeline():
                 next_deadline = time.perf_counter() - t0
     finally:
         stop.set()
+        closing.set()
         for q in (audio_q, video_q):
             try:
                 q.put_nowait(None)   # stop writer threads
