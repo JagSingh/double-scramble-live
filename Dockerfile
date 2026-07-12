@@ -1,5 +1,9 @@
 # (c) 2026 jag.m.singh@gmail.com
-FROM python:3.12-slim
+
+# Pinned to the digest verified working 2026-07-12 (Debian trixie, ffmpeg 7.1.5).
+# ffmpeg's I/O scheduling changed meaningfully across majors (see main.py's
+# queue comment); base-image upgrades are a decision, not a rebuild side effect.
+FROM python:3.12-slim@sha256:423ed6ab25b1921a477529254bfeeabf5855151dc2c3141699a1bfc852199fbf
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core tzdata \
