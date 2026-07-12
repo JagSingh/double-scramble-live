@@ -2,7 +2,7 @@ https://jagmsingh.com/Double-Scramble/Double-Scramble.html
 
 # Double Scramble, Live
 
-A 24/7 generative art livestream after Frank Stella's *Double Scramble* (Blanton Museum of Art), scored by Erik Satie's Gymnopédie No. 1 and conducted by the aircraft flying over your antenna.
+A 24/7 generative art livestream after Frank Stella's *Double Scramble* (Blanton Museum of Art), scored by Erik Satie's Gymnopédie No. 1 and conducted by the aircraft flying over the local antenna.
 
 Two side-by-side panels of concentric squares hold the screen. A local dump1090 ADS-B receiver watches the sky. When a **heavy aircraft** appears (emitter category A3–A6), the next note of the Gymnopédie melody sounds and both panels dissolve — a four-second linear-light cross-fade — into a freshly generated palette. When a **light aircraft** appears (A0–A2, rotorcraft, gliders, or no category), the next bass event of the piece is laid down: a low root, then the chord rolled gently after it. When the sky is empty for a few seconds, the colors begin to breathe in a slow ripple and a low G-pedal drone hums until the next contact.
 
@@ -39,7 +39,7 @@ Prerequisites on the host: Docker, and dump1090-mutability writing `/var/run/dum
 
 1. Create a YouTube live stream (YouTube Studio → Go live → Streaming software) and copy the stream key.
 2. `cp .env.example .env` and paste the key.
-3. In `docker-compose.yml`, set the image to your GHCR path (or switch to `build: .`).
+3. In `docker-compose.yml`, use `build: .` and set the image to GHCR path in future.
 4. `docker compose up -d`
 
 Test without antenna. `DEMO=1 docker compose up` fabricates plausible traffic. No stream key? The container writes a local HLS preview to `./output/preview.m3u8` — open it in VLC.
@@ -48,7 +48,7 @@ Useful knobs (env vars): `WIDTH`, `HEIGHT`, `FPS`, `VIDEO_BITRATE`, `TRANSITION_
 
 ## CI/CD
 
-Every push to `main` triggers GitHub Actions to build the image, run a 10-second headless smoke test (demo traffic, null encoder sink), and publish to GHCR as `latest` + short SHA. On the streaming machine, `docker compose pull && docker compose up -d` rolls the new version. Add [Watchtower](https://containrrr.dev/watchtower/) if you want that pull automated too.
+Every push to `main` triggers GitHub Actions to build the image, run a 10-second headless smoke test (demo traffic, null encoder sink), and publish to GHCR as `latest` + short SHA. On the streaming machine, `docker compose pull && docker compose up -d` rolls the new version. Add [Watchtower](https://containrrr.dev/watchtower/) in future to automate the pull.
 
 ## Notes on 24/7 YouTube streaming
 
