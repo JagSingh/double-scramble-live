@@ -1,12 +1,13 @@
 # (c) 2026 jag.m.singh@gmail.com
 services:
   double-scramble:
+    container_name: double-scramble
     image: ghcr.io/jagsingh/double-scramble-live:latest   # or: build: .
     # build: .                                           # build locally from Dockerfile
     restart: unless-stopped                            # 24/7
     environment:
       PYTHONUNBUFFERED: "1"
-      YOUTUBE_STREAM_KEY: ${YOUTUBE_STREAM_KEY:-}
+      YOUTUBE_STREAM_KEY: ${YOUTUBE_STREAM_KEY:?missing}
       TZ: America/Chicago   # clock overlay shows container-local time
       # DEMO: "1"            # uncomment to run without an SDR
       # WIDTH: "1920"
