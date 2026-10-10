@@ -31,9 +31,13 @@ DEDUPE_SECONDS = _f("DEDUPE_SECONDS", 300)           # same hex won't retrigger 
 # --- ADS-B ---
 ADSB_JSON = os.environ.get("ADSB_JSON", "/adsb/aircraft.json")
 POLL_SECONDS = _f("POLL_SECONDS", 1.0)
+# aircraft.json missing this long -> log that the bind mount is probably
+# stale (readsb restarted without RuntimeDirectoryPreserve). The stream keeps
+# running on silence/drone rather than exiting: a restart ends the broadcast.
+ADSB_STALE_WARN_SECONDS = _f("ADSB_STALE_WARN_SECONDS", 60)
 DEMO = os.environ.get("DEMO", "0") == "1"            # synthesize fake traffic
 
-# Emitter categories (dump1090 "category" attribute).
+# Emitter categories (readsb "category" attribute, unchanged from dump1090).
 # Heavier / rarer -> treble melody note + palette transition.
 # Lighter / frequent (or missing) -> bass clef accompaniment.
 TREBLE_CATEGORIES = {"A3", "A4", "A5", "A6"}
@@ -47,7 +51,7 @@ OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/output") # local HLS preview when no
 SMOKE_TEST = os.environ.get("SMOKE_TEST", "0") == "1"  # render a few seconds, then exit 0
 
 # --- Record maturation ---
-# dump1090 assembles aircraft.json incrementally: a hex appears first,
+# readsb assembles aircraft.json incrementally: a hex appears first,
 # category and flight arrive over the following seconds. Firing on first
 # sight misclassifies heavies as light (category still null). A record is
 # acted on as soon as it is complete (category AND flight present), or

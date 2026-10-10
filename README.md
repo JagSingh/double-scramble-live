@@ -4,7 +4,7 @@ https://jagmsingh.com/Double-Scramble/Double-Scramble.html
 
 A 24/7 generative art livestream after Frank Stella's *Double Scramble* (Blanton Museum of Art), scored by Erik Satie's Gymnopédie No. 1 and conducted by the aircraft flying over the local antenna.
 
-Two side-by-side panels of concentric squares hold the screen. A local dump1090 ADS-B receiver watches the sky. When a **heavy aircraft** appears (emitter category A3–A6), the next note of the Gymnopédie melody sounds and both panels dissolve - a four-second linear-light cross-fade - into a freshly generated palette. When a **light aircraft** appears (A0–A2, rotorcraft, gliders, or no category), the next bass event of the piece is laid down: a low root, then the chord rolled gently after it. When the sky is empty for a few seconds, the colors begin to breathe in a slow ripple and a low G-pedal drone hums until the next contact.
+Two side-by-side panels of concentric squares hold the screen. A local readsb ADS-B receiver watches the sky. When a **heavy aircraft** appears (emitter category A3–A6), the next note of the Gymnopédie melody sounds and both panels dissolve - a four-second linear-light cross-fade - into a freshly generated palette. When a **light aircraft** appears (A0–A2, rotorcraft, gliders, or no category), the next bass event of the piece is laid down: a low root, then the chord rolled gently after it. When the sky is empty for a few seconds, the colors begin to breathe in a slow ripple and a low G-pedal drone hums until the next contact.
 
 The melody and harmony are Satie's, in order; the *rhythm* is the sky's. Over a quiet night the piece assembles itself one contact at a time.
 
@@ -15,7 +15,7 @@ The base hue advances by the golden-ratio conjugate (an irrational rotation of t
 ## Design
 
 ```
-dump1090 → /var/run/dump1090-mutability/aircraft.json  (host, read-only mount)
+readsb → /run/readsb/aircraft.json  (host, read-only mount)
                      │ poll 1 Hz, dedupe by ICAO hex (5 min)
                      ▼
               adsb.py ── PlaneEvent(kind: treble | bass) ──▶ main loop
@@ -75,7 +75,24 @@ upgrade should be a decision, not a side effect of a rebuild.
 
 ## Run it
 
-Prerequisites on the host: Docker, and dump1090-mutability writing `/var/run/dump1090-mutability/aircraft.json`.
+Prerequisites on the host: Docker, and [readsb](https://github.com/wiedehopf/readsb) writing `/run/readsb/aircraft.json`:
+
+```bash
+# installs readsb, removes dump1090-mutability / dump1090-fa (one decoder per dongle)
+sudo bash -c "$(wget -O - https://github.com/wiedehopf/adsb-scripts/raw/master/readsb-install.sh)"
+sudo readsb-set-location <lat> <lon>
+sudo readsb-gain <fixed gain>          # e.g. 29.7; avoid "auto" (adaptive)
+
+# readsb.service uses RuntimeDirectory=readsb, which systemd deletes and
+# recreates on every restart (readsb-gain restarts it). The container's bind
+# mount would be left on the deleted directory. Keep it for the whole boot:
+sudo systemctl edit readsb             # add the two lines below
+#   [Service]
+#   RuntimeDirectoryPreserve=yes
+sudo systemctl restart readsb
+```
+
+If the logs show `[adsb] ... mount is stale`, apply the drop-in above and `docker compose up -d --force-recreate`. The container deliberately keeps streaming instead of exiting, because a restart ends the YouTube broadcast.
 
 1. Create a YouTube live stream (YouTube Studio → Go live → Streaming software) and copy the stream key.
 2. `cp .env.example .env` and paste the key.

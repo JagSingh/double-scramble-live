@@ -3,7 +3,7 @@
 
 Two concentric-square panels after Frank Stella's *Double Scramble*
 (Blanton Museum of Art), played by the sky: aircraft captured by a local
-dump1090 ADS-B receiver trigger the notes of Satie's Gymnopedie No. 1.
+readsb ADS-B receiver trigger the notes of Satie's Gymnopedie No. 1.
 Heavy aircraft advance the melody and dissolve the panels into a fresh,
 never-repeating palette; light aircraft lay down the bass. When the sky
 empties, the colours breathe and a low hum holds the room.

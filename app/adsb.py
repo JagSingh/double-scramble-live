@@ -1,7 +1,7 @@
 # (c) 2026 jag.m.singh@gmail.com
 """ADS-B ingest.
 
-Polls dump1090-mutability's aircraft.json (mounted read-only into the
+Polls readsb's aircraft.json (/run/readsb, mounted read-only into the
 container). A "new plane" event fires the first time an ICAO hex appears,
 and again only if it has been out of sight for DEDUPE_SECONDS - a jet
 loitering overhead triggers once, not every second.
@@ -39,19 +39,36 @@ class AdsbWatcher:
         self.path = path
         self.seen = {}     # hex -> last sighting timestamp (already triggered)
         self.pending = {}  # hex -> first sighting timestamp (still maturing)
-        self._warned_missing = False
+        self._missing_since = None  # monotonic time of first failed read
+        self._warned_stale = False
 
     def poll(self):
         now = time.time()
         try:
             with open(self.path) as fh:
                 data = json.load(fh)
-            self._warned_missing = False
+            if self._missing_since is not None:
+                print(f"[adsb] {self.path} readable again", flush=True)
+            self._missing_since = None
+            self._warned_stale = False
         except (OSError, json.JSONDecodeError):
-            if not self._warned_missing:
-                print(f"[adsb] cannot read {self.path} (waiting for dump1090)",
+            mono = time.monotonic()
+            if self._missing_since is None:
+                self._missing_since = mono
+                print(f"[adsb] cannot read {self.path} (waiting for readsb)",
                       flush=True)
-                self._warned_missing = True
+            elif (not self._warned_stale and mono - self._missing_since
+                  >= config.ADSB_STALE_WARN_SECONDS):
+                # readsb's RuntimeDirectory is deleted and recreated on every
+                # service restart unless RuntimeDirectoryPreserve=yes; this
+                # container's bind mount then points at the dead directory
+                # and never recovers. Only a container restart remounts it.
+                print(f"[adsb] {self.path} missing for "
+                      f"{config.ADSB_STALE_WARN_SECONDS:.0f}s - readsb down, or "
+                      "the /run/readsb mount is stale (needs "
+                      "RuntimeDirectoryPreserve=yes + container restart)",
+                      flush=True)
+                self._warned_stale = True
             return []
 
         events = []
@@ -69,7 +86,7 @@ class AdsbWatcher:
 
             first = self.pending.get(hexid)
             if first is None:
-                # First sighting. dump1090 fills the record incrementally -
+                # First sighting. readsb fills the record incrementally -
                 # category and flight often arrive seconds after the hex -
                 # so hold the aircraft in `pending` rather than firing now
                 # and misreading a heavy as light.
