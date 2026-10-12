@@ -20,3 +20,10 @@ services:
       # readsb restart leaves this mount on a deleted directory.
       - /run/readsb:/adsb:ro
       - ./output:/output      # local HLS preview when no stream key is set
+    # Bounded logs: 24/7 event lines otherwise grow the json-file log
+    # without limit on the host disk. 3 x 10 MB = 30 MB ceiling.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
