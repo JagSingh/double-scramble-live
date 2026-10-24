@@ -67,10 +67,10 @@ if [ "${FORCE:-0}" != 1 ] && [[ " $RUN_HOURS " != *" $(date +%H) "* ]]; then exi
 
 # YouTube broadcast is live
 if [ "${FORCE_FAIL:-0}" != 1 ] && curl -fsS -m 30 -A 'Mozilla/5.0' -H 'Accept-Language: en-US' \
-     "https://www.youtube.com/channel/$CHANNEL/live" | grep -q '"isLiveNow":true'; then
+     "https://www.youtube.com/channel/$CHANNEL/live" | grep -E '"isLive(Now)?":true' >/dev/null; then
   status=ok; msg="live"; url="https://hc-ping.com/$HC_DSL_LIVE"
 else
-  status=FAIL; msg="channel not live (isLiveNow not found)"; [ "${FORCE_FAIL:-0}" = 1 ] && msg="forced test failure (FORCE_FAIL=1)"; url="https://hc-ping.com/$HC_DSL_LIVE/fail"
+  status=FAIL; msg="channel not live (isLive not found)"; [ "${FORCE_FAIL:-0}" = 1 ] && msg="forced test failure (FORCE_FAIL=1)"; url="https://hc-ping.com/$HC_DSL_LIVE/fail"
 fi
 echo "$(date '+%F %T %Z') dsl-live $status: $msg"
 curl -fsS -m 10 --retry 3 -o /dev/null --data-raw "$msg" "$url" || echo "  ping failed: $url"

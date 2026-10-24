@@ -18,7 +18,7 @@ that too.
 | Check | Host | Runs at (Chicago time) | Passes when |
 |---|---|---|---|
 | `dsl-log` | prod-primary | 12:00, 16:00 | the container log shows your event text (`DSL_PATTERN`) in the last 4 h |
-| `dsl-live` | monitor-secondary | 12:00 | the channel's `/live` page contains `"isLiveNow":true` |
+| `dsl-live` | monitor-secondary | 12:00 | the channel's `/live` page contains `"isLive":true` (or `"isLiveNow":true`) |
 
 **Why both checks are needed:** they catch different failures. `dsl-log` shows the process is
 turning aircraft into musical events. `dsl-live` shows YouTube is actually broadcasting. In the
@@ -165,9 +165,12 @@ add it to the file and rerun.
 
 ## Known limits
 
+- **Why `"isLive":true`:** the page YouTube serves to curl has `"isLive":true` while the broadcast is
+  live, but not `"isLiveNow"`. Don't switch to `"isLiveContent"`: it stays true after a broadcast ends.
+
 - **`dsl-live` runs once a day by default,** so a broadcast that has ended can go up to about 24
   hours before you're alerted. The "check more often" row above shortens that.
-- **`dsl-live` depends on YouTube's page markup.** If YouTube renames `isLiveNow`, the check will
+- **`dsl-live` depends on YouTube's page markup.** If YouTube renames `isLive`, the check will
   report "not live" even though the stream is up, so you'll get an alert rather than miss an
   outage.
 - **`dsl-log` depends on log text.** If the event log line changes, update `DSL_PATTERN`.
@@ -181,11 +184,11 @@ The scripts were run in a sandbox using stand-in versions of `docker`, `curl` an
 - **Bash syntax:** both installers pass.
 - **First run:** creates `~/monitoring/double-scramble-live/monitoring.env` with mode 600 and stops. An empty `DSL_PATTERN`, an empty
   UUID or an unknown container each stops the install with a clear error.
-- **Passing run:** `dsl-log` matched the event text and `dsl-live` found `isLiveNow`. Both success
+- **Passing run:** `dsl-log` matched the event text and `dsl-live` found `isLive`. Both success
   pings were sent.
 - **Failure runs:** each of these sent the matching `/fail` ping:
   - a missing container
-  - a YouTube page without `isLiveNow`
+  - a YouTube page without `isLive`
 - **Time gate:** outside the run hours, no pings are sent.
 - **Alongside plane_spotter's monitoring on the same host:** the env files, scripts, logs and cron
   lines are all separate. An unrelated existing cron job survives every install.
